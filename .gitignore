@@ -1,0 +1,6 @@
+# Environment Variables
+.env
+/generated/prisma
+
+# depedency
+/node_modules
