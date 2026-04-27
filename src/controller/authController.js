@@ -61,3 +61,47 @@ export const register = async (req, res) => {
     });
   }
 };
+
+export const login = async (req, res) => {
+  const {email, password} = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({
+      code:400,
+      message:"Please fill all of the fields",
+      success:false
+    })
+  }
+
+  try {
+    const { data, error} = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) {
+      return res.status(400).json({
+        code: 400,
+        message: error.message,
+        success: false
+      });
+    }
+
+    return res.status(200).json({
+      code:200,
+      message:"User Logged in successfully",
+      success:true,
+      data: {
+        user: data.user,
+        session: data.session,
+        token: data.session.access_token.split('.')[1]
+      }
+    })
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal Server Error",
+      success: false
+    });
+  }
+}
