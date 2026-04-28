@@ -1,107 +1,132 @@
 import { prisma } from "../config/db.js";
-import { supabase } from "../config/supabase.js";
+import bcrypt from "bcrypt";
+import { generateToken } from "../util/generateToken.js";
 
 export const register = async (req, res) => {
+  // Destructure data dari request body
   const { username, email, password } = req.body;
 
+  // Validasi input
   if (!username || !email || !password) {
     return res.status(400).json({
       code: 400,
       message: "Please fill all of the fields",
-      success: false
+      success: false,
     });
   }
+
+  // if exist check
+  const emailExists = await prisma.users.findUnique({
+    where: {
+      email: email,
+    },
+  });
+
+  if (emailExists) {
+    return res.status(400).json({
+      code: 400,
+      message: "Email sudah ada yang punya, Ubah lol",
+      success: false,
+    });
+  }
+
+  // encrypt password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPw = await bcrypt.hash(password, salt);
 
   try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(400).json({
-        code: 400,
-        message: error.message,
-        success: false
-      });
-    }
-
-    if (!data.user) {
-      return res.status(400).json({
-        code: 400,
-        message: "User not created",
-        success: false
-      });
-    }
-
-    const insertProfile = await prisma.profiles.create({
+    const user = await prisma.users.create({
       data: {
-        role:"user",
-        username:username,
-        user_id: data.user.id
-      }
+        username: username,
+        email: email,
+        password: hashedPw,
+      },
     });
 
-    return res.status(201).json({
-  code: 201,
-  message: "User created successfully",
-  success: true,
-  data: {
-    email: data.user.email,
-    username: insertProfile.username,
-  }
-});
+    return res.status(200).json({
+      code: 200,
+      success: true,
+      message: "Berhasil register Data",
+      data: user,
+    });
 
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       code: 500,
       message: "Internal Server Error",
-      success: false
+      success: false,
     });
   }
 };
 
 export const login = async (req, res) => {
-  const {email, password} = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({
-      code:400,
-      message:"Please fill all of the fields",
-      success:false
-    })
-  }
-
+  // Destructure data
+  const { email, password } = req.body;
   try {
-    const { data, error} = await supabase.auth.signInWithPassword({
-      email,
-      password
+    // If exist check
+    const emailExists = await prisma.users.findUnique({
+      where: {
+        email: email,
+      },
     });
-    if (error) {
-      return res.status(400).json({
-        code: 400,
-        message: error.message,
-        success: false
+
+    if (!emailExists) {
+      return res.status(401).json({
+        code: 401,
+        message: "Invalid Email or password, please reinput",
+        success: false,
       });
     }
 
-    return res.status(200).json({
-      code:200,
-      message:"User Logged in successfully",
-      success:true,
+    // compare password
+    const isPwValid = await bcrypt.compare(password, emailExists.password);
+
+    if (!isPwValid) {
+      return res.status(400).json({
+        code: 401,
+        message: "Invalid Email or password, please reinput",
+        success: false,
+      });
+    }
+
+    // Generate TOken JWT
+    const token = generateToken({
+      id: emailExists.id,
+      username: emailExists.username,
+      email: emailExists.email,
+      role: emailExists.role
+    }, res);
+
+    res.status(201).json({
+      success: true,
       data: {
-        user: data.user,
-        session: data.session,
-        token: data.session.access_token.split('.')[1]
-      }
-    })
+        user: {
+          id: emailExists.id,
+          email: email,
+        },
+        token,
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       code: 500,
-      message: "Internal Server Error",
-      success: false
+      message: error.message || "Terjadi kesalahan saat push data",
+      success: false,
     });
   }
-}
+};
+
+export const logout = async (req, res) => {
+  // Delete cookie JWT
+  res.cookie("jwt", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
+  return res.status(200).json({
+    code: 200,
+    success: true,
+    message: "Berhasil logout",
+  });
+};
