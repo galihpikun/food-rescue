@@ -66,8 +66,8 @@ export const getRestaurantById = async (req, res) => {
         const restaurant = await prisma.restaurant.findUnique({
             where: { id: id},
             include: {
-                products: true,
-            }, // return semua produk yg ada di resto ini
+                products: true, // return semua produk yg ada di resto ini
+            }, 
         });
 
         if (!restaurant) {
