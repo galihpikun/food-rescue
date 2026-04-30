@@ -1,4 +1,4 @@
-import { prisma } from "../config/db.js";
+import {prisma} from "../config/db.js"
 
 export const createProduct = async (req, res) => {
   const {
@@ -8,11 +8,12 @@ export const createProduct = async (req, res) => {
     originalPrice,
     sellingPrice,
     stock,
-    imageUrl,
     categoryId,
     flashSaleStartTime,
     flashSaleEndTime,
   } = req.body;
+
+  const imageUrl = req.file ? req.file.path : null; 
 
   const userId = req.user.id;
   const userRole = req.user.role;

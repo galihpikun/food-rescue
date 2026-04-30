@@ -119,7 +119,6 @@ export const login = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  // Delete cookie JWT
   res.cookie("jwt", "", {
     httpOnly: true,
     expires: new Date(0),
@@ -131,7 +130,7 @@ export const logout = async (req, res) => {
   });
 };
 
-export const getMe = async (req, res) => {
+export const getProfile = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
