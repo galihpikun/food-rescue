@@ -301,3 +301,51 @@ export const getProductByCategory = async (req,res) => {
     });
   }
 }
+
+export const getOwnedProducts = async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+
+  if (userRole !== "MERCHANT") {
+    return res.status(403).json({
+      message: "kamu bukan merchant",
+      success: false,
+    });
+  }
+  try {
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { userId },
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        message: "kamu belum punya restaurant",
+        success: false,
+      });
+    }
+
+    const products = await prisma.product.findMany({
+      where: {
+        restaurantId: restaurant.id,
+      },
+      include: {
+        category: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.status(200).json({
+      message: "berhasil mengambil produk",
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      success: false,
+    });
+  }
+};

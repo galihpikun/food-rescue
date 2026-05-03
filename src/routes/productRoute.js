@@ -12,5 +12,6 @@ routeProduct.put('/:id', jwtMiddleware, upload.single('image'), editProduct);
 routeProduct.delete('/:id', jwtMiddleware, upload.single('image'), deleteProduct);
 routeProduct.get('/:id', jwtMiddleware, getProductById)
 routeProduct.get('/category/:id', jwtMiddleware, getProductByCategory)
+routeProduct.get("/owned", jwtMiddleware, getOwnedProducts);
 
 export default routeProduct;
