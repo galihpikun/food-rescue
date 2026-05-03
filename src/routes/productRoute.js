@@ -1,5 +1,5 @@
 import express from "express";
-import { createProduct, deleteProduct, editProduct, getFlashSalesProducts, getProductByCategory, getProductById, getProducts } from "../controllers/productController.js";
+import { createProduct, deleteProduct, editProduct, getFlashSalesProducts, getOwnedProducts, getProductByCategory, getProductById, getProducts } from "../controllers/productController.js";
 import { jwtMiddleware } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
 
