@@ -71,109 +71,60 @@ export const createProduct = async (req, res) => {
 
 export const getProducts = async (req, res) => {
   try {
-    const products = await prisma.product.findMany();
+    const { search = "", page = 1, limit = 10} = req.query;
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
 
-    return res.status(200).json({
-      message: "Berhasil fetch produk",
-      success: true,
-      code: 200,
-      data: products,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      success: false,
-      code: 500,
-    });
-  }
-};
+    const skip = (pageNumber - 1) * limitNumber;
 
-export const getFlashSalesProducts = async (req, res) => {
-  try {
-    const products = await prisma.product.findMany({
-      where: {
-        type: "FLASH_SALE",
-      },
-    });
-
-    return res.status(200).json({
-      message: "Berhasil fetch produk",
-      success: true,
-      code: 200,
-      data: products,
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      success: false,
-      code: 500,
-    });
-  }
-};
-
-export const editProduct = async (req, res) => {
-  const productId = req.params.id;
-  const {
-    name,
-    description,
-    type,
-    originalPrice,
-    sellingPrice,
-    stock,
-    categoryId,
-    flashSaleStartTime,
-    flashSaleEndTime,
-  } = req.body;
-
-  const imageUrl = req.file ? req.file.path : undefined;
-
-  const userId = req.user.id;
-
-  try {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      include: { restaurant: true },
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "produk tidak ditemukan", success: false });
+  const searchCondition = search 
+  ? {
+    name: {
+      contains: search,
+      mode: "insensitive",
     }
+  } : {}; 
 
-    if (product.restaurant.userId !== userId) {
-      return res.status(403).json({ message: "bukan owner produk ini", success: false });
-    }
-
-    const productUpdate = await prisma.product.update({
-      where: { id: productId },
-      data: {
-        name,
-        description,
-        type: type || "REGULAR",
-        originalPrice: Number(originalPrice), 
-        sellingPrice: Number(sellingPrice),   
-        stock: stock ? Number(stock) : 1,     
-        imageUrl: imageUrl !== undefined ? imageUrl : product.imageUrl, 
-        categoryId: Number(categoryId), 
-        flashSaleStartTime: flashSaleStartTime ? new Date(flashSaleStartTime) : null,
-        flashSaleEndTime: flashSaleEndTime ? new Date(flashSaleEndTime) : null,
+  const [products, totalItems] = await Promise.all([
+    prisma.product.findMany({
+      where: searchCondition,
+      skip: skip,
+      take: limitNumber,
+      orderBy: {
+        createdAt: 'desc',
       },
-    });
+      include: {
+        restaurant: { select: { name: true}},
+        category: true
+      ,}
+    }),
+    prisma.product.count({
+      where: searchCondition,
+    }),
+  ]);
 
-    return res.status(200).json({
-      message: "berhasil mengupdate makanan!",
-      success: true,
-      data: productUpdate,
-    });
+  const totalPages = Math.ceil(totalItems / limitNumber);
+
+  return res.status(200).json({
+    message: "berhasil fetch produk",
+    success: true,
+    data: products,
+    pagination: {
+      currentPage: pageNumber,
+      totalPages: totalPages,
+      totalItems: totalItems,
+      limit: limitNumber,
+    },
+  });
   } catch (error) {
-    console.log(error);
+    console.error(error)
     return res.status(500).json({
-      message: "Internal Server Error",
-      success: false,
+      message: 'internal server error',
+      success: false
     });
   }
 };
+
 export const deleteProduct = async (req, res) => {
   const productId = req.params.id;
 
